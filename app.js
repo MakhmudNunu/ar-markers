@@ -1,0 +1,190 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// Глобальные переменные
+let selectedOption = null;
+let mindarThree = null;
+let video = null;
+let videoTexture = null;
+let MINDAR = null;
+
+// Конфигурация
+const IMAGE_TARGET_SRC = 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind';
+const GLTF_MODEL_SRC = 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/models/musicband-avatar/scene.gltf';
+const VIDEO_SRC = 'https://valandis.me/gltf/video.mp4';
+
+// Динамический импорт MindAR
+async function loadMindAR() {
+    try {
+        const module = await import('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js');
+        // MindAR может экспортировать MINDAR как default или как named export
+        MINDAR = module.default || module.MINDAR || module;
+        console.log('MindAR загружен успешно:', MINDAR);
+    } catch (error) {
+        console.error('Ошибка загрузки MindAR:', error);
+    }
+}
+
+// Инициализация event listeners
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadMindAR();
+    
+    document.getElementById('card-model').addEventListener('click', () => selectCard('model'));
+    document.getElementById('card-video').addEventListener('click', () => selectCard('video'));
+    document.getElementById('start-btn').addEventListener('click', startAR);
+    document.getElementById('back-btn').addEventListener('click', stopAR);
+});
+
+// Выбор карточки
+function selectCard(option) {
+    selectedOption = option;
+    
+    // Сброс выделения
+    document.getElementById('card-model').classList.remove('selected');
+    document.getElementById('card-video').classList.remove('selected');
+    
+    // Выделение выбранной карточки
+    document.getElementById(`card-${option}`).classList.add('selected');
+    
+    // Активация кнопки запуска
+    document.getElementById('start-btn').disabled = false;
+}
+
+// Запуск AR
+async function startAR() {
+    if (!selectedOption) return;
+    
+    // Скрыть меню
+    document.getElementById('menu').classList.add('hidden');
+    document.getElementById('ar-container').classList.remove('hidden');
+    document.getElementById('back-btn').classList.remove('hidden');
+    
+    try {
+        // Инициализация MindAR
+        mindarThree = new MINDAR.MindARThree({
+            container: document.body,
+            imageTargetSrc: IMAGE_TARGET_SRC
+        });
+        
+        const { renderer, scene, camera } = mindarThree;
+        
+        // Настройка рендерера
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        
+        // Добавление освещения
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        directionalLight.position.set(1, 2, 1);
+        scene.add(directionalLight);
+        
+        // Создание якоря для маркера
+        const anchor = mindarThree.addAnchor(0);
+        
+        if (selectedOption === 'model') {
+            // Загрузка 3D модели
+            const loader = new GLTFLoader();
+            loader.load(GLTF_MODEL_SRC, (gltf) => {
+                const model = gltf.scene;
+                model.scale.set(0.5, 0.5, 0.5);
+                model.position.set(0, 0, 0);
+                anchor.group.add(model);
+            }, undefined, (error) => {
+                console.error('Ошибка загрузки модели:', error);
+            });
+        } else if (selectedOption === 'video') {
+            // Создание видео
+            video = document.createElement('video');
+            video.src = VIDEO_SRC;
+            video.muted = true;
+            video.playsInline = true;
+            video.loop = true;
+            video.crossOrigin = 'anonymous';
+            
+            // Создание видео-текстуры
+            videoTexture = new THREE.VideoTexture(video);
+            videoTexture.minFilter = THREE.LinearFilter;
+            videoTexture.magFilter = THREE.LinearFilter;
+            
+            // Создание плоскости с видео
+            const geometry = new THREE.PlaneGeometry(1, 0.75);
+            const material = new THREE.MeshBasicMaterial({ 
+                map: videoTexture,
+                transparent: true
+            });
+            const plane = new THREE.Mesh(geometry, material);
+            anchor.group.add(plane);
+            
+            // События маркера
+            anchor.onTargetFound = () => {
+                if (video) {
+                    video.play();
+                }
+            };
+            
+            anchor.onTargetLost = () => {
+                if (video) {
+                    video.pause();
+                }
+            };
+        }
+        
+        // Запуск AR
+        await mindarThree.start();
+        
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+    } catch (error) {
+        console.error('Ошибка запуска AR:', error);
+        alert('Ошибка запуска AR. Проверьте консоль для деталей.');
+        stopAR();
+    }
+}
+
+// Остановка AR
+async function stopAR() {
+    if (mindarThree) {
+        try {
+            await mindarThree.stop();
+            
+            // Очистка сцены
+            const { scene } = mindarThree;
+            while (scene.children.length > 0) {
+                scene.remove(scene.children[0]);
+            }
+            
+            // Остановка видео
+            if (video) {
+                video.pause();
+                video = null;
+            }
+            
+            if (videoTexture) {
+                videoTexture.dispose();
+                videoTexture = null;
+            }
+            
+            mindarThree = null;
+        } catch (error) {
+            console.error('Ошибка остановки AR:', error);
+        }
+    }
+    
+    // Показать меню
+    document.getElementById('menu').classList.remove('hidden');
+    document.getElementById('ar-container').classList.add('hidden');
+    document.getElementById('back-btn').classList.add('hidden');
+    
+    // Сброс выбора
+    selectedOption = null;
+    document.getElementById('card-model').classList.remove('selected');
+    document.getElementById('card-video').classList.remove('selected');
+    document.getElementById('start-btn').disabled = true;
+}
