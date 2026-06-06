@@ -11,7 +11,7 @@ let MINDAR = null;
 // Конфигурация
 const IMAGE_TARGET_SRC = 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind';
 const GLTF_MODEL_SRC = 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/band-example/bear/scene.gltf';
-const VIDEO_SRC = 'https://media.w3.org/2010/05/sintel/trailer.mp4';
+const VIDEO_SRC = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
 // Динамический импорт MindAR
 async function loadMindAR() {
