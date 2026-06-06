@@ -11,7 +11,7 @@ let MINDAR = null;
 // Конфигурация
 const IMAGE_TARGET_SRC = 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind';
 const GLTF_MODEL_SRC = 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/band-example/bear/scene.gltf';
-const VIDEO_SRC = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+const VIDEO_SRC = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 
 // Динамический импорт MindAR
 async function loadMindAR() {
@@ -97,13 +97,14 @@ async function startAR() {
         } else if (selectedOption === 'video') {
             // Создание видео
             video = document.createElement('video');
-            video.src = VIDEO_SRC;
+            video.crossOrigin = 'anonymous';
             video.muted = true;
             video.playsInline = true;
             video.loop = true;
-            video.crossOrigin = 'anonymous';
             video.style.display = 'none';
             document.body.appendChild(video);
+            video.src = VIDEO_SRC;
+            video.load();
             
             // События видео для отладки
             video.addEventListener('loadstart', () => console.log('Видео: начало загрузки'));
@@ -123,8 +124,8 @@ async function startAR() {
                     videoTexture = new THREE.VideoTexture(video);
                     videoTexture.minFilter = THREE.LinearFilter;
                     videoTexture.magFilter = THREE.LinearFilter;
-                    videoTexture.format = THREE.RGBFormat;
-                    videoTexture.colorSpace = THREE.SRGBColorSpace;
+                    videoTexture.format = THREE.RGBAFormat;
+                    videoTexture.encoding = THREE.sRGBEncoding;
                     
                     // Вычисляем соотношение сторон видео
                     const aspectRatio = video.videoWidth / video.videoHeight;
@@ -209,6 +210,8 @@ async function stopAR() {
             // Остановка видео
             if (video) {
                 video.pause();
+                video.removeAttribute('src');
+                video.remove();
                 video = null;
             }
             
