@@ -61,16 +61,13 @@ async function startAR() {
     
     try {
         // Инициализация MindAR
+        const container = document.getElementById('ar-container');
         mindarThree = new MINDAR.MindARThree({
-            container: document.body,
+            container: container,
             imageTargetSrc: IMAGE_TARGET_SRC
         });
         
         const { renderer, scene, camera } = mindarThree;
-        
-        // Настройка рендерера
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
         
         // Добавление освещения
         const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
@@ -181,11 +178,9 @@ async function startAR() {
         // Запуск AR
         await mindarThree.start();
         
-        // Обработка изменения размера окна
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        // Запуск цикла рендеринга
+        renderer.setAnimationLoop(() => {
+            renderer.render(scene, camera);
         });
         
     } catch (error) {
@@ -199,6 +194,7 @@ async function startAR() {
 async function stopAR() {
     if (mindarThree) {
         try {
+            mindarThree.renderer.setAnimationLoop(null);
             await mindarThree.stop();
             
             // Очистка сцены
